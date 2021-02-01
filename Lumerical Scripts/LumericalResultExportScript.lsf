@@ -1,0 +1,17 @@
+fName = "SResults.txt";
+if(fileexists(fName)){rm(fName);}
+
+mySMatResults = getsweepresult("s-parameter sweep", "S matrix");
+
+mySMat = mySMatResults.S;
+myLambda = transpose(mySMatResults.lambda);
+
+mySMatFlat = reshape(mySMat,[1, length(mySMat)]);
+
+sizeTxt = num2str(size(mySMat));
+lambdaTxt = num2str(myLambda);
+matTxt = num2str(mySMatFlat);
+
+write(fName, sizeTxt);
+write(fName, lambdaTxt);
+write(fName, matTxt);

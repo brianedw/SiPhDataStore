@@ -1,0 +1,235 @@
+switchtolayout;
+selectall;
+delete;
+
+## SIM PARAMS
+
+WLDesign = 1.525e-6;
+WLMin = 1.400e-6;
+WLMax = 1.600e-6;
+WLNPoints = 201;
+
+siHeight = 220.e-9;
+siEtch1Height = 220.e-9 - 70.e-9;
+siEtch2Height = 220.e-9 - 130.e-9;
+
+wgWidth = 500e-9; #only used for calcuating port widths
+
+siIndex = 3.47885;
+siO2Index = 1.44433;
+siWGIndex = 2.864526;
+etch1WGIndex = 2.556470;
+etch2WGIndex = 2.118832;
+siO2WGIndex = 1.44433;
+
+nInputs = 3;
+nOutputs = 3;
+
+portYSep = 2.745e-6;
+portXSep = 2*19.74486e-6;
+
+kHeight = 2*7e-6;
+
+marg = 0.5e-6;
+
+GDSCellName = 'Amp_k1';
+GDSFilePath = '.\Swiss Cheese_Fabricated.gds';
+GDSSiLayerNumber = 1;
+GDSEtch1LayerNumber = 2;
+GDSEtch2LayerNumber = 3;
+
+mode = '2D';
+
+
+## Build Simulation
+
+setglobalsource("wavelength start", WLMin);
+setglobalsource("wavelength stop", WLMax);
+setglobalmonitor("frequency points", WLNPoints);
+
+
+portWidth = 2*portYSep - 3*wgWidth;
+
+size_x = portXSep + 2*marg;
+size_y = kHeight + 2*marg;
+size_z = WLMax;
+
+x_off = (5.45e-6 + 35.3e-6)/2;
+y_off = 0;
+z_off = 0;
+
+x_min = -size_x/2 + x_off;
+x_max =  size_x/2 + x_off;
+y_min = -size_y/2 + y_off;
+y_max =  size_y/2 + y_off;
+z_min =  siHeight/2 - WLMax/2;
+z_max =  siHeight/2 + WLMax/2;
+
+x_inputPlane = -portXSep/2 + x_off;
+x_outputPlane = portXSep/2 + x_off;
+
+
+## Design Import
+# Note that the etch layers need to be
+# imported first so that the Si layer
+# will take precedence.
+
+    # Import Etch1 Layer
+if(mode == '3D'){          
+    gdsimport(GDSFilePath,
+              GDSCellName,
+              GDSEtch1LayerNumber,
+              '<Object defined dielectric>',
+              0.0,
+              siEtch1Height);
+    set("index", siIndex);
+    set("name", "Etch1Import");
+} else if (mode == '2D'){
+    gdsimport(GDSFilePath,
+              GDSCellName,
+              GDSEtch1LayerNumber,
+              '<Object defined dielectric>',
+              0.0,
+              siHeight);
+    set("index", etch1WGIndex);
+    set("name", "Etch1Import");
+}
+
+    # Import Etch2 Layer
+if(mode == '3D'){          
+    gdsimport(GDSFilePath,
+              GDSCellName,
+              GDSEtch2LayerNumber,
+              '<Object defined dielectric>',
+              0.0,
+              siEtch1Height);
+    set("index", siIndex);
+    set("name", "Etch2Import");
+} else if (mode == '2D'){
+    gdsimport(GDSFilePath,
+              GDSCellName,
+              GDSEtch2LayerNumber,
+              '<Object defined dielectric>',
+              0.0,
+              siHeight);
+    set("index", etch2WGIndex);
+    set("name", "Etch2Import");
+}
+
+    # Import Si Layer
+if(mode == '3D'){
+    gdsimport(GDSFilePath,
+          GDSCellName,
+          GDSSiLayerNumber,
+          '<Object defined dielectric>',
+          0.0,
+          siHeight);
+    set("index", siIndex);
+    set("name", "SiImport");
+}
+else if (mode == '2D'){
+    gdsimport(GDSFilePath,
+          GDSCellName,
+          GDSSiLayerNumber,
+          '<Object defined dielectric>',
+          0.0,
+          siHeight);
+    set("index", siWGIndex);
+    set("name", "SiImport");
+}
+
+## FDTD
+
+addvarfdtd;
+if(mode == '2D'){
+    set('dimension','2D');
+} else if (mode == '3D') {
+    set('dimension','3D');
+}
+set('background index', siO2Index);
+set('mesh accuracy',4);
+set('z', siHeight/2);
+set('x min', x_min);
+set('x max', x_max);
+set('y min', y_min);
+set('y max', y_max);
+if (mode == '3D') {
+    set('z min', z_min);
+    set('z max', z_max);
+}
+
+## PORTS
+
+for(i = 1:nInputs) 
+{
+    yCenter = -portYSep*(i-(nInputs+1.)/2);
+    iStr = num2str(i);
+    addport;
+        set('name','in'+iStr);
+        set('x', x_inputPlane);
+        set('y min',yCenter - portWidth/2);
+        set('y max',yCenter + portWidth/2);
+        set('z min', z_min);
+        set('z max', z_max);    
+}
+
+for(i = 1:nOutputs) 
+{
+    yCenter = -portYSep*(i-(nOutputs+1.)/2);
+    iStr = num2str(i);
+    addport;
+        set('name','out'+iStr);
+        set('direction', 'backward');
+        set('x', x_outputPlane);
+        set('y min',yCenter - portWidth/2);
+        set('y max',yCenter + portWidth/2);
+        set('z min', z_min);
+        set('z max', z_max);    
+}
+
+## MONITORS
+
+addindex;
+    set('name','IndexMonitor');
+    set('x min', x_min);
+    set('x max', x_max);	
+    set('y min', y_min);
+    set('y max', y_max);
+    set('z min', z_min);
+    set('z max', z_max);
+
+addpower;
+    set('name','opt_fields');
+    set('monitor type','2D Z-normal');
+    set('z', 110e-9);
+    set('x min', x_min);
+    set('x max', x_max);
+    set('y min', y_min);
+    set('y max', y_max);
+    set('override global monitor settings', 1);
+    set('frequency points', 1);
+    set('use source limits', 0);
+    set('wavelength center', WLDesign);
+
+if(mode == '3D'){
+    addpower;
+        set('name','opt_fields3D');
+        set('monitor type','3D');
+        set('x min', x_min);
+        set('x max', x_max);	
+        set('y min', y_min);
+        set('y max', y_max);
+        set('z min', z_min);
+        set('z max', z_max);
+        set('override global monitor settings', 1);
+        set('frequency points', 1);
+        set('use source limits', 0);
+        set('wavelength center', WLDesign);
+}
+
+
+
+    
+
+
+
