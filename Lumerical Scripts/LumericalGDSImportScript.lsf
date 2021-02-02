@@ -2,6 +2,9 @@ switchtolayout;
 selectall;
 delete;
 
+mode = '3D';
+target = 'kernel3';
+
 ## SIM PARAMS
 
 WLDesign = 1.525e-6;
@@ -9,13 +12,9 @@ WLMin = 1.400e-6;
 WLMax = 1.600e-6;
 WLNPoints = 201;
 
-# Another Comment
-
 siHeight = 220.e-9;
 siEtch1Height = 220.e-9 - 70.e-9;
 siEtch2Height = 220.e-9 - 130.e-9;
-
-wgWidth = 500e-9; #only used for calcuating port widths
 
 siIndex = 3.47885;
 siO2Index = 1.44433;
@@ -24,24 +23,96 @@ etch1WGIndex = 2.556470;
 etch2WGIndex = 2.118832;
 siO2WGIndex = 1.44433;
 
-nInputs = 3;
-nOutputs = 3;
-
-portYSep = 2.745e-6;
-portXSep = 2*19.74486e-6;
-
-kHeight = 2*7e-6;
+if(target == 'kernel1'){
+    GDSCellName = 'kernel1';
+    GDSFilePath = '.\kernel1.gds';
+    nInputs = 3;
+    nOutputs = 3;
+    portYSep =  2.745e-6;
+    portXSep = 40.676e-6;
+    x_orig = -portXSep/2;
+    y_orig = 0;
+    kHeight = 14e-6;
+} else if(target == 'kernel2'){
+    GDSCellName = 'kernel4';
+    GDSFilePath = '.\kernel4.gds';
+    nInputs = 3;
+    nOutputs = 3;
+    portYSep =  2.745e-6;
+    portXSep = 40.676e-6;
+    x_orig = -portXSep/2;
+    y_orig = 0;
+    kHeight = 14e-6;
+} else if(target == 'kernel3'){
+    GDSCellName = 'kernel3';
+    GDSFilePath = '.\kernel3.gds';
+    nInputs = 3;
+    nOutputs = 3;
+    portYSep = 11.000e-6;
+    portXSep = 50.476e-6;
+    x_orig = -portXSep/2;
+    y_orig = 0;
+    kHeight = 30e-6;
+} else if(target == 'kernel4'){
+    GDSCellName = 'kernel2';
+    GDSFilePath = '.\kernel2.gds';
+    nInputs = 2;
+    nOutputs = 2;
+    portYSep = 2.745e-6;
+    portXSep = 22.676e-6;
+    x_orig = -portXSep/2 - 0.1e-6;
+    y_orig = 0.0775e-6;
+    kHeight = 14e-6;
+} else if(target == 'cal1'){
+    GDSCellName = 'Cal1';
+    GDSFilePath = '.\cal1.gds';
+    nInputs = 1;
+    nOutputs = 1;
+    portYSep = 4e-6;
+    portXSep = 40.676e-6;
+    x_orig = 0;
+    y_orig = 0;
+    kHeight = 10e-6;
+} else if(target == 'cal2'){
+    GDSCellName = 'Cal4';
+    GDSFilePath = '.\cal4.gds';
+    nInputs = 1;
+    nOutputs = 1;
+    portYSep = 4e-6;
+    portXSep = 40.676e-6;
+    x_orig = 0;
+    y_orig = 0;
+    kHeight = 10e-6;
+} else if(target == 'cal3'){
+    GDSCellName = 'Cal1';
+    GDSFilePath = '.\cal1.gds';
+    nInputs = 1;
+    nOutputs = 1;
+    portYSep = 4e-6;
+    portXSep = 50.476e-6;
+    x_orig = 0;
+    y_orig = 0;
+    kHeight = 10e-6;
+} else if(target == 'cal4'){
+    GDSCellName = 'Cal2';
+    GDSFilePath = '.\cal4.gds';
+    nInputs = 1;
+    nOutputs = 1;
+    portYSep = 4e-6;
+    portXSep = 22.676e-6;
+    x_orig = 0;
+    y_orig = 0;
+    kHeight = 10e-6;
+}
 
 marg = 0.5e-6;
 
-GDSCellName = 'Amp_k1';
-GDSFilePath = '.\Swiss Cheese_Fabricated.gds';
 GDSSiLayerNumber = 1;
 GDSEtch1LayerNumber = 2;
 GDSEtch2LayerNumber = 3;
 
-mode = '2D';
-
+wgWidth = 500e-9; 
+tailLength = 5e-6;
 
 ## Build Simulation
 
@@ -56,7 +127,7 @@ size_x = portXSep + 2*marg;
 size_y = kHeight + 2*marg;
 size_z = WLMax;
 
-x_off = (5.45e-6 + 35.3e-6)/2;
+x_off = 0;
 y_off = 0;
 z_off = 0;
 
@@ -86,6 +157,8 @@ if(mode == '3D'){
               siEtch1Height);
     set("index", siIndex);
     set("name", "Etch1Import");
+    set("x", x_orig);
+    set("y", y_orig);
 } else if (mode == '2D'){
     gdsimport(GDSFilePath,
               GDSCellName,
@@ -95,6 +168,8 @@ if(mode == '3D'){
               siHeight);
     set("index", etch1WGIndex);
     set("name", "Etch1Import");
+    set("x", x_orig);
+    set("y", y_orig);
 }
 
     # Import Etch2 Layer
@@ -107,6 +182,8 @@ if(mode == '3D'){
               siEtch1Height);
     set("index", siIndex);
     set("name", "Etch2Import");
+    set("x", x_orig);
+    set("y", y_orig);
 } else if (mode == '2D'){
     gdsimport(GDSFilePath,
               GDSCellName,
@@ -116,6 +193,8 @@ if(mode == '3D'){
               siHeight);
     set("index", etch2WGIndex);
     set("name", "Etch2Import");
+    set("x", x_orig);
+    set("y", y_orig);
 }
 
     # Import Si Layer
@@ -128,6 +207,8 @@ if(mode == '3D'){
           siHeight);
     set("index", siIndex);
     set("name", "SiImport");
+    set("x", x_orig);
+    set("y", y_orig);
 }
 else if (mode == '2D'){
     gdsimport(GDSFilePath,
@@ -138,14 +219,49 @@ else if (mode == '2D'){
           siHeight);
     set("index", siWGIndex);
     set("name", "SiImport");
+    set("x", x_orig);
+    set("y", y_orig);
 }
+
+# Build WG Tails to smoothly go into PML.
+
+if(mode=='3D'){
+    tailIndex = siIndex;
+} else if (mode=='2D'){
+    tailIndex = siWGIndex;
+}
+for(xi=0:1){
+    if(xi==0){
+        tailXMin = -portXSep/2 - 5e-6;
+        tailXMax = -portXSep/2;
+    }
+    else if(xi==1){
+        tailXMin = portXSep/2;
+        tailXMax = portXSep/2 + 5e-6;
+    }
+    for(yi=0:nInputs-1){
+        addrect;
+        set("name","WGTails");
+        set("x min", tailXMin);
+        set("x max", tailXMax);
+        set("y", -portYSep*(nInputs-1)/2 + yi*portYSep);
+        set("y span", 0.5e-6);
+        set("z min",0);
+        set("z max", siHeight);
+        set("index", siIndex);
+        #set("material","Si (Silicon) - Palik");
+    }
+}
+
+
 
 ## FDTD
 
-addvarfdtd;
 if(mode == '2D'){
+    addvarfdtd;
     set('dimension','2D');
 } else if (mode == '3D') {
+    addfdtd;
     set('dimension','3D');
 }
 set('background index', siO2Index);
