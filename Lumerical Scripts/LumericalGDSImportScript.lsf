@@ -3,7 +3,7 @@ selectall;
 delete;
 
 mode = '3D';
-target = 'kernel3';
+target = 'cal3';
 
 ## SIM PARAMS
 
@@ -74,8 +74,8 @@ if(target == 'kernel1'){
     y_orig = 0;
     kHeight = 10e-6;
 } else if(target == 'cal2'){
-    GDSCellName = 'Cal4';
-    GDSFilePath = '.\cal4.gds';
+    GDSCellName = 'Cal1';
+    GDSFilePath = '.\cal2.gds';
     nInputs = 1;
     nOutputs = 1;
     portYSep = 4e-6;
@@ -84,8 +84,8 @@ if(target == 'kernel1'){
     y_orig = 0;
     kHeight = 10e-6;
 } else if(target == 'cal3'){
-    GDSCellName = 'Cal1';
-    GDSFilePath = '.\cal1.gds';
+    GDSCellName = 'Cal3';
+    GDSFilePath = '.\cal3.gds';
     nInputs = 1;
     nOutputs = 1;
     portYSep = 4e-6;

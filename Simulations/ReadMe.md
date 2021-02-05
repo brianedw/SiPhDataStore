@@ -1,3 +1,5 @@
+# Simulation File Descriptions
+
 All the files contain the scattering parameters data calculated for the ports
 
 `Kx_SIM.txt`:  
@@ -13,3 +15,6 @@ All the files contain the scattering parameters data calculated for the ports
 
 `Kx_2DEIA_SIM3.txt`:
 * The 2D simulations done with the effective index approach using the script.
+
+`Kx_SIM4.txt` & `Calx_SIM4.txt`:
+* Simulations done with an updated Lumerical script.  Reference planes were placed at the proper location requiring "tails" on each waveguide.  Calibration simulations are also part of the script.
