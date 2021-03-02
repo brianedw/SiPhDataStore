@@ -80,13 +80,13 @@ from DataContainers import (TargSParams, SimSParams, ExpResultSpect, ExpResult)
 # In[ ]:
 
 
-from UtilityMath import (findSingleRotCF,)
+from UtilityMath import (findSingleRotCF, findDoubleRotCF, genInterferenceLabels, genTransLabels, matrixDiffMag, matrixMagDiffMag, matrixDiffVarPhase, findSF)
 
 
 # In[ ]:
 
 
-from UtilityPlotting import (makePolarPlot, addMatrixDiff)
+from UtilityPlotting import (PolarPlot, DispersionPlot)
 
 
 # # Work
@@ -106,9 +106,9 @@ def makePhErrorSimPlot(KName, KTarg, KSim):
     KTarget = KTarg.getSTransPart()
     p = figure(plot_width=800, plot_height=400, title=KName + " Sim Error vs Wavelength", x_range=[1.4, 1.6], y_range=[-0.1, 6.1])
 
-    errorsComp = [matrixDiffMag(k, KTarget) for k in KSim.getSTransPart()]
-    errorsMag = [matrixMagDiffMag(k, KTarget) for k in KSim.getSTransPart()]
-    errorsMagVarPh = [matrixDiffVarPhase(k, KTarget) for k in KSim.getSTransPart()]
+    errorsComp = [matrixDiffMag(k, KTarget) for k in KSim.getSTransPartSpec()]
+    errorsMag = [matrixMagDiffMag(k, KTarget) for k in KSim.getSTransPartSpec()]
+    errorsMagVarPh = [matrixDiffVarPhase(k, KTarget) for k in KSim.getSTransPartSpec()]
 
     p.line(x=KSim.wls, y=errorsComp, line_color=palettes.Category10[9][0], legend_label="Complex Error")
     p.line(x=KSim.wls, y=errorsMag, line_color=palettes.Category10[9][1], legend_label="Mag Error")
@@ -144,7 +144,7 @@ def addSimTraces(p, KSim, rList, tList):
         for r in rList:
             color = palettes.Category10[9][colorIndex]
             colorIndex += 1
-            trace = KSim.getPTrace(r,t)
+            trace = KSim.getTTrace(r,t)
             p.line(KSim.wls, trace, line_color=color, line_width=2, legend_label="abs(S"+str(r)+str(t)+")^2")
 
 
@@ -157,7 +157,7 @@ def addTargDots(p, KTarg, rList, tList):
         for r in rList:
             color = palettes.Category10[9][colorIndex]
             colorIndex += 1
-            val = KTarg.getPVal(r,t)
+            val = KTarg.getTVal(r,t)
             p.circle([1.525], [val], size=10, color=color, fill_alpha=0)
 
 
@@ -170,7 +170,7 @@ def addExpDots(p, KExp, rList, tList):
         for r in rList:
             color = palettes.Category10[9][colorIndex]
             colorIndex += 1
-            val = KExp.getPVal(r,t)
+            val = KExp.getTVal(r,t)
             p.cross([1.525], [val], size=10, color=color)
 
 
@@ -238,9 +238,9 @@ def MakePowerBarPlot(KTarg, KSim, KExp, rVals, tVals):
     dodges = [-0.25, 0.0, 0.25]
     colors = ["#c9d9d3", "#718dbf", "#e84d60"]
 
-    targData = KTarg.getPTransPart().flatten().tolist()
-    simData = KSim.getPTransPartAtWL(1.525).flatten().tolist()
-    expData = KExp.getPTransPart().flatten().tolist()
+    targData = KTarg.getTTransPart().flatten().tolist()
+    simData = KSim.getTTransPart(1.525).flatten().tolist()
+    expData = KExp.getTTransPart().flatten().tolist()
 
     data = {'cats' : cats,
             'targ' : targData,
@@ -266,22 +266,23 @@ def MakePowerBarPlot(KTarg, KSim, KExp, rVals, tVals):
 # In[ ]:
 
 
-def MakeInterPowerBarPlot(KTarg, KSim, KExpInt, rPairs, tVals):
-    cats = ['T'+str(r[0])+str(r[1])+','+str(t) for r in rPairs for t in tVals]
+def MakeInterPowerBarPlot(KTarg, KSim, KExp, labels):
+    cats = labels
     subCats = ['targ', 'sim', 'exp']
     dodges =  [ -0.25,   0.0,  0.25]
     colors = ["#c9d9d3", "#718dbf", "#e84d60"]
 
-    targData = [np.abs(KTarg.getSVal(r[0],t) + KTarg.getSVal(r[1],t) )**2 for r in rPairs for t in tVals]
-    simData = [np.abs(KSim.getSVal(r[0],t, 1.525) + KSim.getSVal(r[1],t, 1.525) )**2 for r in rPairs for t in tVals]
-    expData = [KExpInt.getPVal(r, t) for r in rPairs for t in tVals]
+    
+    targData = [KTarg.getMeasurement(label)[1] for label in labels]
+    simData = [KSim.getMeasurementAt(label, 1.525)[1] for label in labels]
+    expData = [KExp.getMeasurement(label)[1] for label in labels]
     
     data = {'cats' : cats,
             'targ' : targData,
             'sim' : simData,
             'exp' : expData}
     source = ColumnDataSource(data=data)
-
+    
     max = np.max((targData,simData,expData))
     p = figure(x_range=cats, y_range=(0, 1.2*max), plot_width=850, plot_height = 300, 
                 title="Power Comparisons", toolbar_location=None, tools="")
@@ -508,37 +509,56 @@ K3Exp1525PD = {'T41':  55, 'T42': 107, 'T43':  63,
 # In[ ]:
 
 
-K3Exp1525PDInt = {'T45,1':110, 'T45,2':125, 'T45,3': 70,
-                  'T56,1':120, 'T56,2': 36, 'T56,3':135,
-                  'T46,1': 99, 'T46,2': 75, 'T46,3':121}
+K3Exp1525PDInt = {'T41_T51':110, 'T42_T52':125, 'T43_T53': 70,
+                  'T51_T61':120, 'T52_T62': 36, 'T53_T63':135,
+                  'T41_T61': 99, 'T42_T62': 75, 'T43_T63':121}
 
 
 # In[ ]:
 
 
-K3Target = np.array(
-    [[0.5494*np.exp(1j*(  26.34)*deg), 0.6882*np.exp(1j*( 140.39)*deg), 0.4729*np.exp(1j*( -19.92)*deg)],
-     [0.7224*np.exp(1j*(  34.34)*deg), 0.5000*np.exp(1j*( -66.30)*deg), 0.4788*np.exp(1j*( -131.93)*deg)],
-     [0.4212*np.exp(1j*(  14.63)*deg), 0.5247*np.exp(1j*(  17.06)*deg), 0.7400*np.exp(1j*(  74.63)*deg)]
-    ])
+genInterferenceLabels(6);
 
 
 # In[ ]:
 
 
-KSim2D = SimSParams('K3_2DEIA_SIM3.txt')
-KSim = SimSParams('K3_SIM3.txt')
-KTarg = TargSParams(K3Target.conj())
-KExp = ExpSParams(K3Exp1525PD, 1.0)
-KExpInt = ExpInterParams(K3Exp1525PDInt, 1.0)
-KName = 'K3'
+KName = "K3"
+
+
+# In[ ]:
+
+
+KSim2D = SimSParams('Simulations/K3_2DEIA_SIM3.txt')
+KSim = SimSParams('Simulations/K3_SIM3.txt')
+
+
+# In[ ]:
+
+
+KTarg = TargSParams('K3')
+
+
+# In[ ]:
+
+
+p = PolarPlot(KName)
+p.addMatrix(KTarg.getSTransPart())
+p.show()
+
+
+# In[ ]:
+
+
+KExp = ExpResult(K3Exp1525PD, 6)
+KExp = ExpResult({**K3Exp1525PD, **K3Exp1525PDInt}, 6)
 
 
 # In[ ]:
 
 
 KSim2D.resetCorrectionFactor()
-CF = findSingleRotCF(KSim2D.getSTransPartAtWL(1.525), KTarg.getSTransPart())
+CF = findSingleRotCF(KSim2D.getSTransPart(1.525), KTarg.getSTransPart())
 
 
 # In[ ]:
@@ -550,9 +570,9 @@ KSim2D.applyCorrectionFactor(CF)
 # In[ ]:
 
 
-p = makePolarPlot(KName)
-addMatrixDiff(p, KTarg.getSTransPart(), KSim2D.getSTransPartAtWL(1.525))
-show(p)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim2D.getSTransPart(1.525))
+p.show()
 
 
 # In[ ]:
@@ -566,7 +586,7 @@ show(p)
 
 
 KSim.resetCorrectionFactor()
-CF = findDoubleRotCF(KSim.getSTransPartAtWL(1.525), KTarg.getSTransPart())
+CF = findDoubleRotCF(KSim.getSTransPart(1.525), KTarg.getSTransPart())
 
 
 # In[ ]:
@@ -578,9 +598,9 @@ KSim.applyCorrectionFactor(CF)
 # In[ ]:
 
 
-p = makePolarPlot(KName)
-addMatrixDiff(p, KTarg.getSTransPart(), KSim.getSTransPartAtWL(1.525))
-show(p)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim.getSTransPart(1.525))
+p.show()
 
 
 # In[ ]:
@@ -600,7 +620,7 @@ KSim.resetCorrectionFactor()
 
 
 KExp.resetCorrectionFactor()
-sf = findSF(KExp.getPTransPart(), KSim.getPTransPartAtWL(1.525))
+sf = findSF(KExp.getTTransPart(), KSim.getTTransPart(1.525))
 KExp.applyCorrectionFactor(sf)
 
 
@@ -617,6 +637,10 @@ show(p)
 # In[ ]:
 
 
+KExp.resetCorrectionFactor()
+KExp.applyCorrectionFactor()
+KExp.resetCorrectionFactor()
+KExp.applyCorrectionFactor(sf)
 p = MakePowerBarPlot(KTarg, KSim, KExp, (4, 5, 6), (1, 2, 3))
 show(p)
 
@@ -624,31 +648,19 @@ show(p)
 # In[ ]:
 
 
-sf = findSF(KExp.getPTransPart(), KSim.getPTransPartAtWL(1.525))
+KExp.applyCorrectionFactor(0.003)
 
 
 # In[ ]:
 
 
-KExpInt.applyCorrectionFactor(0.0045)
+labels = genInterferenceLabels(6)
 
 
 # In[ ]:
 
 
-rPairs = [(4,5), (5,6), (4,6)]
-tVals = [1,2,3]
-p = makeInterDispersionPlot(KName, 1.5)
-addSimTraces1(p, KSim, rPairs, tVals)
-addTargDots1(p, KTarg, rPairs, tVals)
-addExpDots1(p, KExpInt, rPairs, tVals)
-show(p)
-
-
-# In[ ]:
-
-
-p = MakeInterPowerBarPlot(KTarg, KSim, KExpInt, ((4,5), (5,6), (4,6)), (1,2,3))
+p = MakeInterPowerBarPlot(KTarg, KSim, KExp, labels)
 show(p)
 
 
@@ -671,14 +683,34 @@ KTarg = TargSParams('K4')
 # In[ ]:
 
 
+print(KTarg.getSTransPart())
+
+
+# In[ ]:
+
+
+p = PolarPlot(KName)
+p.addMatrix(KTarg.getSTransPart())
+p.show()
+
+
+# In[ ]:
+
+
 KSim2D = SimSParams('Simulations//K4_2DEIA_SIM3.txt')
-KSim = SimSParams('Simulations//K4_SIM3.txt')
+KSim = SimSParams("Simulations/K4_SIM4.txt", "Simulations/Cal4_Sim4.txt")
 
 
 # In[ ]:
 
 
 KExpSpect = ExpResultSpect('K4', n=4, scaleFactor=2.5)
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:
@@ -708,9 +740,9 @@ KTarg.getSTransPart()
 # In[ ]:
 
 
-p = makePolarPlot(KName)
-addMatrixDiff(p, KTarg.getSTransPart(), KSim2D.getSTransPart(1.525))
-show(p)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim2D.getSTransPart(1.525))
+p.show()
 
 
 # In[ ]:
@@ -729,9 +761,9 @@ KSim2D.applyCorrectionFactor(CF)
 # In[ ]:
 
 
-p = makePolarPlot(KName)
-addMatrixDiff(p, KTarg.getSTransPart(), KSim2D.getSTransPart(1.525))
-show(p)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim2D.getSTransPart(1.525))
+p.show()
 
 
 # In[ ]:
@@ -744,9 +776,15 @@ show(p)
 # In[ ]:
 
 
-p = makePolarPlot(KName)
-addMatrixDiff(p, KTarg.getSTransPart(), KSim.getSTransPart(1.525))
-show(p)
+KSim.getSTrace(3,1);
+
+
+# In[ ]:
+
+
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim.getSTransPart(1.525))
+p.show()
 
 
 # In[ ]:
@@ -765,16 +803,9 @@ KSim.applyCorrectionFactor(CF)
 # In[ ]:
 
 
-p = makePolarPlot(KName)
-addMatrixDiff(p, KTarg.getSTransPart(), KSim.getSTransPart(1.525))
-show(p)
-
-
-# In[ ]:
-
-
-# p = makePhErrorSimPlot(KName, KTarg, KSim)
-# show(p)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim.getSTransPart(1.525))
+p.show()
 
 
 # In[ ]:
@@ -786,114 +817,39 @@ KSim.resetCorrectionFactor()
 # In[ ]:
 
 
-def makeDispersionPlot(title, xRange, yRange):
-    p = figure(plot_width=850, plot_height=400, title=title, x_range=xRange, y_range=yRange)
-    # p.update_layout(shapes=[dict(type= 'line', yref= 'paper', y0= 0, y1= 1, xref= 'x', x0= 1.525, x1= 1.525)])
-    p.xaxis.axis_label = 'wavelength (um)'
-    p.yaxis.axis_label = 'T'
-    return p
-
-
-# In[ ]:
-
-
-def addPairedTraces(p, traceData1, traceData2, name):
-    color = palettes.Category10[10][hash(name)%10]
-    p.line(traceData1[0], traceData1[1], line_color=color, line_width=1, legend_label=name+" goal")
-    p.line(traceData2[0], traceData2[1], line_color=color, line_width=2, legend_label=name+" exp")    
-
-
-# In[ ]:
-
-
-def addTrace(p, traceData, name):
-    color = palettes.Category10[10][hash(name)%10]
-    p.line(traceData[0], traceData[1], line_color=color, line_width=2, legend_label=name)
-
-
-# In[ ]:
-
-
-def addPoint(p, ptData, name):
-    color = palettes.Category10[10][hash(name)%10]
-    p.circle(ptData[0], ptData[1], line_color=color, fill_color=color)
-
-
-# In[ ]:
-
-
-nPorts = 4
-n = nPorts//2
-tTransKeyArray = ['T'+str(i+1+n)+str(j+1) for j in range(n) for i in range(n)]
-tTransKeyArray
-
-
-# In[ ]:
-
-
-import itertools
-
-
-# In[ ]:
-
-
-def genTransLabels(nPorts):
-    n = nPorts//2
-    inPorts = np.linspace(1, n, num=n, endpoint=True, dtype=np.int)
-    outPorts = np.linspace(1 + n, n+n, num=n, endpoint=True, dtype=np.int)
-    combos = list(itertools.product(outPorts, inPorts))
-    labels = ['T'+str(oP)+str(iP) for oP, iP in combos]
-    return labels
-genTransLabels(6)
-
-
-# In[ ]:
-
-
-def genInterferenceLabels(nPorts):
-    n = nPorts//2
-    inPorts = np.linspace(1, n, num=n, endpoint=True, dtype=np.int)
-    outPorts = np.linspace(1 + n, n+n, num=n, endpoint=True, dtype=np.int)
-    outPortPairs = itertools.combinations(outPorts, 2)
-    combos = list(itertools.product(outPortPairs, inPorts))
-    labels = ['T'+str(oP1)+str(iP)+'_T'+str(oP2)+str(iP) for ((oP1, oP2), iP) in combos]
-    return labels
-genInterferenceLabels(6)
-
-
-# In[ ]:
-
-
 KExp.applyCorrectionFactor(0.2/100.)
+# KExpSpect.importCalibrationCurve("./Simulations/GC_V1.csv")
+# KExpSpect.applyCorrectionFactor(0.5)
 
 
 # In[ ]:
 
 
-p = makeDispersionPlot("Standard Transmission Measurements", [1.4, 1.6], [0, 0.3])
+p = DispersionPlot("Standard Transmission Measurements", "T", [1.4, 1.6], [0, 0.3])
 for name in genTransLabels(4):
-    addPairedTraces(p, KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
-    addPoint(p, KExp.getMeasurement(name), name)
-show(p)
+    p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
+    p.addPoint(KExp.getMeasurement(name), name)
+p.show()
 
 
 # In[ ]:
 
 
-p = makeDispersionPlot("Intra Kernel Interference", [1.4, 1.6], [0, 0.3])
+KExpSpect.applyCorrectionFactor(1)
+p = DispersionPlot("Intra Kernel Interference", "T", [1.4, 1.6], [0, 0.3])
 for name in genInterferenceLabels(4):
-    addPairedTraces(p, KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
-show(p)
+    p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
+p.show()
 
 
 # In[ ]:
 
 
-p = makeDispersionPlot("Reference Waveguide Measurements", [1.4, 1.6], [0, 0.3])
+p = DispersionPlot("Reference Waveguide Measurements", 'T', [1.4, 1.6], [0, 0.08])
 labels = ('T31_R', 'T42_R')
 for name in labels:
-    addTrace(p, KExpSpect.getMeasurement(name), name)
-show(p)
+    p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
+p.show()
 
 
 # In[ ]:
@@ -907,8 +863,8 @@ KExp.applyCorrectionFactor(sf)
 # In[ ]:
 
 
-p = makeDispersionPlot(KName, 0.6)
-addSimTraces(p, KSim, (3,4), (1,2))
+p = DispersionPlot(KName, 0.6)
+p.addSimTraces(p, KSim, (3,4), (1,2))
 addTargDots(p, KTarg, (3,4), (1,2))
 addExpDots(p, KExp, (3,4), (1,2))
 show(p)
@@ -964,7 +920,20 @@ getExpTrace("/content/SiPhDataStore/K4_V2/K4T31_n15dBm_44d5K.csv")
 
 
 import pandas as pd
-df=pd.read_csv("/content/SiPhDataStore/K4_V2/K4T31_n15dBm_44d5K.csv", sep=',',header=None)
+df=pd.read_csv("./Simulations/GC_V1.csv", sep=',',header=None)
+
+
+# In[ ]:
+
+
+df
+
+
+# In[ ]:
+
+
+import pandas as pd
+df=pd.read_csv"/content/SiPhDataStore/Simulations/GC_V1.csv"", sep=',',header=None)
 
 
 # In[ ]:
@@ -974,6 +943,12 @@ K4T31 = np.array(df)
 
 
 # ## Bar Charts
+
+# In[ ]:
+
+
+getExpTrace()
+
 
 # In[ ]:
 

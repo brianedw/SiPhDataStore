@@ -7,12 +7,19 @@
 
 
 import numpy as np
+import pandas as pd
 
 
 # In[ ]:
 
 
 from scipy.optimize import minimize_scalar, minimize
+
+
+# In[ ]:
+
+
+from scipy import interpolate
 
 
 # # Utility Functions
@@ -304,6 +311,88 @@ a1 = np.array([[1,1,1],[1,1,1],[1,1,1]])
 a2 = a1 * makeCFSymmetrical([13.,87.])
 CF = findDoubleRotCF(a1, a2)
 matrixDiffMag(a1*CF, a2)
+
+
+# ## Label Generation
+
+# In[ ]:
+
+
+import itertools
+
+
+# In[ ]:
+
+
+def genTransLabels(nPorts):
+    n = nPorts//2
+    inPorts = np.linspace(1, n, num=n, endpoint=True, dtype=np.int)
+    outPorts = np.linspace(1 + n, n+n, num=n, endpoint=True, dtype=np.int)
+    combos = list(itertools.product(outPorts, inPorts))
+    labels = ['T'+str(oP)+str(iP) for oP, iP in combos]
+    return labels
+
+
+# In[ ]:
+
+
+genTransLabels(6)
+
+
+# In[ ]:
+
+
+def genInterferenceLabels(nPorts):
+    n = nPorts//2
+    inPorts = np.linspace(1, n, num=n, endpoint=True, dtype=np.int)
+    outPorts = np.linspace(1 + n, n+n, num=n, endpoint=True, dtype=np.int)
+    outPortPairs = itertools.combinations(outPorts, 2)
+    combos = list(itertools.product(outPortPairs, inPorts))
+    labels = ['T'+str(oP1)+str(iP)+'_T'+str(oP2)+str(iP) for ((oP1, oP2), iP) in combos]
+    return labels
+
+
+# In[ ]:
+
+
+genInterferenceLabels(6)
+
+
+# ## Resampling
+
+# In[ ]:
+
+
+def importCurveOntoWLRange(fname, wlmin, wlmax):
+    calCurve = np.array(pd.read_csv(fname, sep=',', header=None))
+    wlsImp, TImp = calCurve.T
+    f = interpolate.interp1d(wlsImp, TImp, kind='quadratic')
+    wlsNew = np.linspace(wlmin, wlmax, wlmax-wlmin+1, endpoint=True)
+    return np.array([wlsNew, f(wlsNew)]).T
+
+
+# In[ ]:
+
+
+importCurveOntoWLRange("./simulations/GC_V1.csv", 1470, 1580)
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+
 
 
 # In[ ]:

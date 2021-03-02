@@ -20,6 +20,7 @@ from bokeh.io import output_file, show
 from bokeh.models import ColumnDataSource
 from bokeh.plotting import figure
 from bokeh.transform import dodge
+import bokeh.palettes as palettes
 
 print("Bokeh Version:", bokeh.__version__)
 
@@ -47,59 +48,71 @@ mainQ
 # In[ ]:
 
 
-def makePolarPlot(title):
-    '''
-    This will create a Bokeh plot that depicts the unit circle.
+class PolarPlot:
+    
+    def __init__(self, title):
+        '''
+        This will create a Bokeh plot that depicts the unit circle.
 
-    Requires import bokeh
-    '''
-    p = bokeh.plotting.figure(plot_width=400, plot_height=400, title=title, 
-                              x_range=[-1.1, 1.1], y_range=[-1.1, 1.1])
-    p.xaxis[0].ticker=bokeh.models.tickers.FixedTicker(ticks=np.arange(-1, 2, 0.25))
-    p.yaxis[0].ticker=bokeh.models.tickers.FixedTicker(ticks=np.arange(-1, 2, 0.25)) 
-    p.circle(x = [0,0,0,0], y = [0,0,0,0], radius = [0.25, 0.50, 0.75, 1.0], 
-             fill_color = None, line_color='gray')
-    p.line(x=[0,0], y=[-1,1], line_color='gray')
-    p.line(x=[-1,1], y=[0,0], line_color='gray')
-    xs = [0.25, 0.50, 0.75, 1.00]
-    ys = [0, 0, 0, 0]
-    texts = ['0.25', '0.50', '0.75', '1.00']
-    source = bokeh.models.ColumnDataSource(dict(x=xs, y=ys, text=texts))
-    textGlyph = bokeh.models.Text(x="x", y="y", text="text", angle=0.3, 
-                                  text_color="gray", text_font_size='10px')
-    p.add_glyph(source, textGlyph)
-    p.xgrid.grid_line_color = None
-    p.ygrid.grid_line_color = None
-    return p
+        Requires import bokeh
+        '''
+        p = bokeh.plotting.figure(plot_width=400, plot_height=400, title=title, 
+                                  x_range=[-1.1, 1.1], y_range=[-1.1, 1.1])
+        p.xaxis[0].ticker=bokeh.models.tickers.FixedTicker(ticks=np.arange(-1, 2, 0.25))
+        p.yaxis[0].ticker=bokeh.models.tickers.FixedTicker(ticks=np.arange(-1, 2, 0.25)) 
+        p.circle(x = [0,0,0,0], y = [0,0,0,0], radius = [0.25, 0.50, 0.75, 1.0], 
+                 fill_color = None, line_color='gray')
+        p.line(x=[0,0], y=[-1,1], line_color='gray')
+        p.line(x=[-1,1], y=[0,0], line_color='gray')
+        xs = [0.25, 0.50, 0.75, 1.00]
+        ys = [0, 0, 0, 0]
+        texts = ['0.25', '0.50', '0.75', '1.00']
+        source = bokeh.models.ColumnDataSource(dict(x=xs, y=ys, text=texts))
+        textGlyph = bokeh.models.Text(x="x", y="y", text="text", angle=0.3, 
+                                      text_color="gray", text_font_size='10px')
+        p.add_glyph(source, textGlyph)
+        p.xgrid.grid_line_color = None
+        p.ygrid.grid_line_color = None
+        self.p = p
+    
+    def addMatrixDiff(self, m1, m2):
+        """
+        This will draw lines showing the difference between two 2D matrices.
+        """
+        p = self.p
+        begX = (np.real(m1)).flatten()
+        begY = (np.imag(m1)).flatten()
+        endX = (np.real(m2)).flatten()
+        endY = (np.imag(m2)).flatten()
 
+        xs = np.array([begX, endX]).T.tolist()
+        ys = np.array([begY, endY]).T.tolist()
+        p.multi_line(xs=xs, ys=ys)
 
-# In[ ]:
+        sourceTarg = bokeh.models.ColumnDataSource(dict(x=begX.tolist(), y=begY.tolist()))
+        glyphTarg = bokeh.models.Circle(x="x", y="y", size=10, line_color="green", 
+                                        fill_color=None, line_width=3)
+        p.add_glyph(sourceTarg, glyphTarg)
 
+        sourceSim = bokeh.models.ColumnDataSource(dict(x=endX.tolist(), y=endY.tolist()))
+        glyphSim = bokeh.models.Circle(x="x", y="y", size=5, line_color=None, 
+                                       fill_color='red', line_width=3)
+        p.add_glyph(sourceSim, glyphSim)
 
-def addMatrixDiff(bokehPlot, m1, m2):
-    """
-    This will draw lines showing the difference between two 2D matrices.
-    """
-    p = bokehPlot
-    begX = (np.real(m1)).flatten()
-    begY = (np.imag(m1)).flatten()
-    endX = (np.real(m2)).flatten()
-    endY = (np.imag(m2)).flatten()
-
-    xs = np.array([begX, endX]).T.tolist()
-    ys = np.array([begY, endY]).T.tolist()
-    p.multi_line(xs=xs, ys=ys)
-
-    sourceTarg = bokeh.models.ColumnDataSource(dict(x=begX.tolist(), y=begY.tolist()))
-    glyphTarg = bokeh.models.Circle(x="x", y="y", size=10, line_color="green", 
-                                    fill_color=None, line_width=3)
-    p.add_glyph(sourceTarg, glyphTarg)
-
-    sourceSim = bokeh.models.ColumnDataSource(dict(x=endX.tolist(), y=endY.tolist()))
-    glyphSim = bokeh.models.Circle(x="x", y="y", size=5, line_color=None, 
-                                   fill_color='red', line_width=3)
-    p.add_glyph(sourceSim, glyphSim)
-    return p
+    def addMatrix(self, m1):
+        """
+        This will draw lines showing the difference between two 2D matrices.
+        """
+        p = self.p
+        X = (np.real(m1)).flatten()
+        Y = (np.imag(m1)).flatten()
+        source = bokeh.models.ColumnDataSource(dict(x=X.tolist(), y=Y.tolist()))
+        glyph = bokeh.models.Circle(x="x", y="y", size=5, line_color=None, 
+                                       fill_color='cyan', line_width=3)
+        p.add_glyph(source, glyph)
+        
+    def show(self):
+        show(self.p)
 
 
 # In[ ]:
@@ -107,14 +120,74 @@ def addMatrixDiff(bokehPlot, m1, m2):
 
 m1 = RandomComplexGaussianMatrix(0.5, (5,5))
 m2 = m1 + RandomComplexGaussianMatrix(0.05, (5,5))
+m3 = RandomComplexGaussianMatrix(0.5, (5,5))
 
 
 # In[ ]:
 
 
-p = makePolarPlot("Plot Title")
-addMatrixDiff(p, m1, m2)
-if mainQ: show(p)
+pp = PolarPlot("Plot Title")
+pp.addMatrixDiff(m1, m2)
+pp.addMatrix(m3)
+if mainQ: pp.show()
+
+
+# #### Dispersion Plot (Class)
+
+# In[ ]:
+
+
+class DispersionPlot:
+    
+    def __init__(self, title, yLabel, xRange, yRange):
+        self.p = figure(plot_width=850, plot_height=400, title=title, x_range=xRange, y_range=yRange)
+        # p.update_layout(shapes=[dict(type= 'line', yref= 'paper', y0= 0, y1= 1, xref= 'x', x0= 1.525, x1= 1.525)])
+        self.p.xaxis.axis_label = 'wavelength (um)'
+        self.p.yaxis.axis_label = yLabel
+    
+    def addPairedTraces(self, traceDataGoal, traceDataExp, name):
+        p = self.p
+        color = palettes.Category10[10][hash(name)%10]
+        self.p.line(traceDataGoal[0], traceDataGoal[1], line_color=color, line_width=1, legend_label=name+" goal")
+        self.p.line(traceDataExp[0],  traceDataExp[1],  line_color=color, line_width=2, legend_label=name+" exp")
+        
+    def addTrace(self, traceData, name):
+        color = palettes.Category10[10][hash(name)%10]
+        self.p.line(traceData[0], traceData[1], line_color=color, line_width=2, legend_label=name)
+        
+    def addPoint(self, ptData, name):
+        color = palettes.Category10[10][hash(name)%10]
+        self.p.circle(ptData[0], ptData[1], line_color=color, fill_color=color)
+        
+    def show(self):
+        show(self.p)
+
+
+# In[ ]:
+
+
+
+
+
+# In[ ]:
+
+
+wls = np.arange(0.6, 1.4, 0.01)
+data1a = 0.3*wls**2
+data1b = 0.3*wls**2+0.04
+data2 = 1 - 0.3*wls
+data3 = data2[::20] - 0.05
+wlsDec = wls[::20]
+
+
+# In[ ]:
+
+
+dp = DispersionPlot("Test Plot", "|S|", [0.5, 1.5], [0, 1])
+dp.addPairedTraces((wls, data1a), (wls, data1b), "Trial1")
+dp.addTrace((wls, data2), "Other Data")
+dp.addPoint((wlsDec, data3), "Other Data")
+dp.show()
 
 
 # #### Phase Error Simulation Plot
@@ -134,58 +207,6 @@ def makePhErrorSimPlot(KName, KTarg, KSim):
     p.line(x=KSim.wls, y=errorsMag, line_color=palettes.Category10[9][1], legend_label="Mag Error")
     p.line(x=KSim.wls, y=errorsMagVarPh, line_color=palettes.Category10[9][2], legend_label="Complex Error var Phase")
     return p
-
-
-# #### Dispersion Plot
-
-# In[ ]:
-
-
-def makeDispersionPlot(title, xRange, yRange):
-    p = figure(plot_width=850, plot_height=400, title=title, x_range=xRange, y_range=yRange)
-    # p.update_layout(shapes=[dict(type= 'line', yref= 'paper', y0= 0, y1= 1, xref= 'x', x0= 1.525, x1= 1.525)])
-    p.xaxis.axis_label = 'wavelength (um)'
-    p.yaxis.axis_label = 'T'
-    return p
-
-
-# In[ ]:
-
-
-def addSimTraces(p, KSim, rList, tList):
-    colorIndex = 0
-    for t in tList:
-        for r in rList:
-            color = palettes.Category10[9][colorIndex]
-            colorIndex += 1
-            trace = KSim.getPTrace(r,t)
-            p.line(KSim.wls, trace, line_color=color, line_width=2, legend_label="abs(S"+str(r)+str(t)+")^2")
-
-
-# In[ ]:
-
-
-def addTargDots(p, KTarg, rList, tList):
-    colorIndex = 0
-    for t in tList:
-        for r in rList:
-            color = palettes.Category10[9][colorIndex]
-            colorIndex += 1
-            val = KTarg.getPVal(r,t)
-            p.circle([1.525], [val], size=10, color=color, fill_alpha=0)
-
-
-# In[ ]:
-
-
-def addExpDots(p, KExp, rList, tList):
-    colorIndex = 0
-    for t in tList:
-        for r in rList:
-            color = palettes.Category10[9][colorIndex]
-            colorIndex += 1
-            val = KExp.getPVal(r,t)
-            p.cross([1.525], [val], size=10, color=color)
 
 
 # #### Interference Dispersion Plot
@@ -309,4 +330,10 @@ def MakeInterPowerBarPlot(KTarg, KSim, KExpInt, rPairs, tVals):
     p.legend.location = "top_left"
     p.legend.orientation = "horizontal"
     return p
+
+
+# In[ ]:
+
+
+
 

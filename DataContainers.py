@@ -13,18 +13,14 @@ import sys, os
 
 
 import numpy as np
+import pandas as pd
+import scipy as sp
 
 
 # In[ ]:
 
 
 deg = np.pi/180
-
-
-# In[ ]:
-
-
-import pandas as pd
 
 
 # ### Custom Imports
@@ -132,7 +128,7 @@ K4Target = np.array(
 # In[ ]:
 
 
-targDict = {'K1':K1Target, 'K2':K2Target, 'K3':K3Target, 'K4':K4Target}
+targDict = {'K1':K1Target, 'K2':K2Target, 'K3':K3Target.conj(), 'K4':K4Target}
 
 
 # In[ ]:
@@ -270,9 +266,13 @@ def loadSimResults(fName):
     assert len(npArray) == nC*nR*nWLs, 'data not read to expected length'
     # Reshape array
     npArray = npArray.reshape(nWLs, nR, nC)
-    # and return.
-    print(fName, ':', npArray.shape)
-    return wls, npArray
+    # There is a quirk of SParams where sometimes in a 2x2, they use the transpose.  Let's undo that here.
+    if nR == 2:
+        sParams = npArray
+    else:
+        sParams = np.transpose(npArray, (0, 2, 1))
+    print(fName, ':', sParams.shape)
+    return wls, sParams
 
 
 # In[ ]:
@@ -284,15 +284,37 @@ os.getcwd()
 # In[ ]:
 
 
-loadSimResults("Simulations/K1_SIM3.txt");
+wls, SParams = loadSimResults("Simulations/K4_SIM4.txt")
+
+
+# In[ ]:
+
+
+SParams[0, 3, 0] #S41
+
+
+# In[ ]:
+
+
+wls, SParams = loadSimResults("Simulations/Cal4_SIM4.txt")
+
+
+# In[ ]:
+
+
+SParams[0, 1, 0] #S21
 
 
 # In[ ]:
 
 
 class SimSParams:
-    def __init__(self, fName):
+    def __init__(self, fName, refFName=None):
         self.wls, self.SDataRaw = loadSimResults(fName)
+        if refFName:
+            self.wlsRef, self.SDataRef = loadSimResults(refFName)
+        else:
+            self.wlsRef, self.SDataRef = None, None
         self.SData = self.SDataRaw.copy()
         self.nWLs, self.nR, self.nC = self.SData.shape
 
@@ -332,6 +354,9 @@ class SimSParams:
 
     def resetCorrectionFactor(self):
         self.SData = self.SDataRaw
+        
+    def getSValR(self):
+        return self.SDataRef[:, 2-1, 1-1] #S21 or Ref
       
     def getMeasurement(self, key, verbose=False):
         """
@@ -361,18 +386,30 @@ class SimSParams:
             return (self.wls, np.abs(dataS)**2)
         else:
             raise ValueError("Unrecognized measurement type.  Should be 'S' or 'T'.")
+            
+    def getMeasurementAt(self, key, wl, verbose=False):
+        wls, vals = self.getMeasurement(key)
+        F = sp.interpolate.interp1d(wls, vals, kind='quadratic')
+        v = F(wl).item()
+        return (wl, v)
 
 
 # In[ ]:
 
 
-k1Sim = SimSParams("Simulations/K1_SIM3.txt")
+k1Sim = SimSParams("Simulations/K4_SIM4.txt", "Simulations/Cal4_Sim4.txt")
 
 
 # In[ ]:
 
 
-k1Sim.getMeasurement('T41_T61')
+k1Sim.getMeasurement('T31_T41');
+
+
+# In[ ]:
+
+
+k1Sim.getMeasurement('S31_R', verbose=True)
 
 
 # ## Experimental Spectroscopic
@@ -442,6 +479,7 @@ class ExpResultSpect:
     
     def __init__(self, name, n, scaleFactor=1):
         self.sf = scaleFactor
+        self.calCurve = 1
         self.n = n
         fnames = glob.glob('Experiments/**/'+name+'_*.csv', recursive=True)
         keys = map(convertFNameToKey, fnames)
@@ -451,7 +489,7 @@ class ExpResultSpect:
         
     def getMeasurement(self, key):
         wls, trace = self.dataDict[key]
-        return (wls, self.sf*trace)
+        return (wls, self.sf/self.calCurve*trace)
     
     def getTTrace(self, r, c):
         return self.dataDict['T'+str(r)+str(c)]
@@ -469,16 +507,27 @@ class ExpResultSpect:
         n = self.n // 2
         tTransKeyArray = [['T'+str(i+1+n)+str(j+1) for j in range(n)] for i in range(n)]
         TArray = np.array([[self.dataDict[k][1] for k in row] for row in tTransKeyArray])
-        return(self.sf)*TArray
+        return(self.sf/self.calCurve)*TArray
 
     def applyCorrectionFactor(self, sf):
         """
         Applies a scalar or vectorial correction factor.  For instance
         """
         self.sf = sf
-
+        
     def resetCorrectionFactor(self):
         self.sf = 1
+        
+    def importCalibrationCurve(self, fname):       
+        calCurve = np.array(pd.read_csv(fname, sep=',', header=None))
+        wlsImp, TImp = calCurve.T
+        f = sp.interpolate.interp1d(wlsImp/1000, TImp, kind='quadratic')
+        randomDataValue = list(self.dataDict.values())[0]
+        wlsNew, _ = randomDataValue
+        self.calCurve = f(wlsNew)
+    
+    def resetCalibrationCurve(self):
+        self.calCurve = 1
 
 
 # In[ ]:
@@ -507,11 +556,13 @@ K4ExpSp.getTTransPartSpec().shape
 
 
 class ExpResult:
-    def __init__(self, transDict, n, WL='1.525', scaleFactor=1):
+    def __init__(self, transDict, portCount, WL='1.525', scaleFactor=1):
         self.wl = WL
         self.dataDict = transDict
         self.sf = scaleFactor
         n = int(np.sqrt(len(transDict)))
+        self.portCount = portCount
+        n = portCount//2
         PKeyArray = [['T'+str(i+1+n)+str(j+1) for j in range(n)] for i in range(n)]
         transArray = np.array([[transDict[key] for key in row] for row in PKeyArray])
         zArray = np.zeros_like(transArray)
@@ -525,7 +576,8 @@ class ExpResult:
         return (self.sf)*self.dataDict['T'+str(r)+str(c)]
 
     def getTTransPart(self):
-        return (self.sf)*(self.TData[(self.nR//2):, :(self.nC//2) ])
+        n = self.portCount//2
+        return (self.sf)*(self.TData[n:, :n])
 
     def applyCorrectionFactor(self, sf):
         self.sf = sf
