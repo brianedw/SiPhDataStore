@@ -135,7 +135,7 @@ targDict = {'K1':K1Target, 'K2':K2Target, 'K3':K3Target.conj(), 'K4':K4Target}
 
 
 class TargSParams:
-    def __init__(self, kernel='K1', SRef=(1.+0.j), WL='1.525'):
+    def __init__(self, kernel='K1', SRef=(1.+0.j), WL=1.525):
         transArray = targDict[kernel]
         zArray = np.zeros_like(transArray)
         self.SDataRaw = np.block([[zArray, transArray.T],
@@ -194,6 +194,18 @@ class TargSParams:
             return (self.wl, np.abs(dataS)**2)
         else:
             raise ValueError("Unrecognized measurement type.  Should be 'S' or 'T'.")
+    
+    def getMeasurementAt(self, key, wl, verbose=False):
+        """
+        key is expected to be of the form:
+        S61, P61, P61_R, P41_P61.
+        """
+        if(wl == self.wl):
+            wl, v = self.getMeasurement(key)
+            return v
+        else:
+            print("Wavelength doesn't match")
+            return 0.
 
 
 # In[ ]:
@@ -391,7 +403,7 @@ class SimSParams:
         wls, vals = self.getMeasurement(key)
         F = sp.interpolate.interp1d(wls, vals, kind='quadratic')
         v = F(wl).item()
-        return (wl, v)
+        return v
 
 
 # In[ ]:
@@ -475,33 +487,80 @@ def convertFNameToKey(fName):
 # In[ ]:
 
 
+
+
+
+# In[ ]:
+
+
+def convertFNameToDetails(fPath):
+    fName = fPath.split('\\')[-1]                        # 'K4_T31_T41_n15d5dBm_44d5K.csv'
+    fName2 = fName.split('.')[0]                         # 'K4_T31_T41_n15d5dBm_44d5K'
+    fNameParts = fName2.split("_")                       # ['K4', 'T31', 'T41', 'n15d5dBm', '44d5K']
+    kernelCode = fNameParts[0]                           # 'K4'
+    measCode = "_".join(fNameParts[1:-2])                # 'T31_T41'
+    tiaResCode = fNameParts[-1]                          # '44d5K'
+    incPowerCode = fNameParts[-2]                        # 'n15d5dBm'
+    r_TIA = eval(tiaResCode.replace('d', '.').replace('K', 'e3'))                           # 44500.0
+    gc_power_dB = eval(incPowerCode.replace('dBm', '').replace('d', '.').replace('n', '-'))  # -15.5
+    gc_power_mW = 10**(gc_power_dB/10)                                                       # 0.0281
+    outDict = {'kernelCode': kernelCode,
+               'measCode': measCode,
+               'gc_power_mW': gc_power_mW,
+               'R_TIA': r_TIA}
+    return outDict
+
+
+# In[ ]:
+
+
+convertFNameToDetails('Experiments\\K4\\K4_T31_T41_n15d5dBm_44d5K.csv')
+
+
+# In[ ]:
+
+
 class ExpResultSpect:
     
     def __init__(self, name, n, scaleFactor=1):
         self.sf = scaleFactor
-        self.calCurve = 1
+        self.GCEffCurve = 1
         self.n = n
-        fnames = glob.glob('Experiments/**/'+name+'_*.csv', recursive=True)
-        keys = map(convertFNameToKey, fnames)
-        datas = map(getExpTrace, fnames)
-        self.dataDict = dict(zip(keys, datas))
-        print("Imported Objects:", list(self.dataDict.keys()))
+        fNames = glob.glob('Experiments/**/'+name+'_*.csv', recursive=True)
+        details =[convertFNameToDetails(fName) for fName in fNames]
+        keys = [d['measCode'] for d in details]
+        self.detailsDict = {key:detail for key, detail in zip(keys, details)}
+        self.dataDict = {key:getExpTrace(fName) for key, fName in zip(keys, fNames)}
+        print("Imported Objects:", keys)
         
     def getMeasurement(self, key):
-        wls, trace = self.dataDict[key]
-        return (wls, self.sf/self.calCurve*trace)
+        wls, VTrace = self.dataDict[key]
+        GCEffCurve = self.GCEffCurve  # mW/mW
+        PDResp =  0.8/1000  # [A/mW]
+        R_TIA = self.detailsDict[key]['R_TIA']  # Ohms
+        P_GC = self.detailsDict[key]['gc_power_mW']  # mW
+        PIn = P_GC*GCEffCurve  # mW
+        POut = VTrace/(R_TIA*PDResp)  # mW
+        T = self.sf*(POut/PIn)
+        return (wls, T)
+    
+    def getMeasurementAt(self, key, wl):
+        (wls, T) = self.getMeasurement(key)
+        iWL = find_nearest_index(wls, wl)
+        return T[iWL]
     
     def getTTrace(self, r, c):
-        return self.dataDict['T'+str(r)+str(c)]
+        (wls, T) = getMeasurement('T'+str(r)+str(c))
+        return (wls, T)
         
     def getTVal(self, r, c, wl):
-        wls, tData = self.dataDict['T'+str(r)+str(c)]
+        (wls, T) = getMeasurement('T'+str(r)+str(c))
         iWL = find_nearest_index(wls, wl)
-        return tData[iWL]
+        return T[iWL]
     
-    def getTTransPart(self, wl):
-        iWL = find_nearest_index(self.wls, wl)
-        return np.abs(self.SData[iWL, (self.nR//2):, :(self.nC//2) ])**2
+#     def getTTransPart(self, wl):
+#         iWL = find_nearest_index(self.wls, wl)
+#         return np.abs(self.SData[iWL, (self.nR//2):, :(self.nC//2) ])**2
    
     def getTTransPartSpec(self):       
         n = self.n // 2
@@ -518,16 +577,16 @@ class ExpResultSpect:
     def resetCorrectionFactor(self):
         self.sf = 1
         
-    def importCalibrationCurve(self, fname):       
+    def importGCEffCurve(self, fname, wlSF=1, fillValue=1):       
         calCurve = np.array(pd.read_csv(fname, sep=',', header=None))
         wlsImp, TImp = calCurve.T
-        f = sp.interpolate.interp1d(wlsImp/1000, TImp, kind='quadratic')
+        f = sp.interpolate.interp1d(wlSF*wlsImp/1000, TImp, kind='quadratic', fill_value=fillValue, bounds_error=False)
         randomDataValue = list(self.dataDict.values())[0]
         wlsNew, _ = randomDataValue
-        self.calCurve = f(wlsNew)
+        self.GCEffCurve = f(wlsNew)
     
-    def resetCalibrationCurve(self):
-        self.calCurve = 1
+    def resetGCEffCurve(self):
+        self.GCEffCurve = 1
 
 
 # In[ ]:
@@ -542,12 +601,6 @@ PKeyArray
 
 
 K4ExpSp = ExpResultSpect('K4', 4)
-
-
-# In[ ]:
-
-
-K4ExpSp.getTTransPartSpec().shape
 
 
 # ## Experimental Monochromatic

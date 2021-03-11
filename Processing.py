@@ -86,7 +86,7 @@ from UtilityMath import (findSingleRotCF, findDoubleRotCF, genInterferenceLabels
 # In[ ]:
 
 
-from UtilityPlotting import (PolarPlot, DispersionPlot)
+from UtilityPlotting import (PolarPlot, DispersionPlot, PowerBarPlot)
 
 
 # # Work
@@ -232,70 +232,70 @@ def addExpDots1(p, KExpInt, rPairs, tList):
 # In[ ]:
 
 
-def MakePowerBarPlot(KTarg, KSim, KExp, rVals, tVals):
-    cats = ['T'+str(r)+str(t) for r in rVals for t in tVals]
-    subCats = ['targ', 'sim', 'exp']
-    dodges = [-0.25, 0.0, 0.25]
-    colors = ["#c9d9d3", "#718dbf", "#e84d60"]
+# def MakePowerBarPlot(KTarg, KSim, KExp, rVals, tVals):
+#     cats = ['T'+str(r)+str(t) for r in rVals for t in tVals]
+#     subCats = ['targ', 'sim', 'exp']
+#     dodges = [-0.25, 0.0, 0.25]
+#     colors = ["#c9d9d3", "#718dbf", "#e84d60"]
 
-    targData = KTarg.getTTransPart().flatten().tolist()
-    simData = KSim.getTTransPart(1.525).flatten().tolist()
-    expData = KExp.getTTransPart().flatten().tolist()
+#     targData = KTarg.getTTransPart().flatten().tolist()
+#     simData = KSim.getTTransPart(1.525).flatten().tolist()
+#     expData = KExp.getTTransPart().flatten().tolist()
 
-    data = {'cats' : cats,
-            'targ' : targData,
-            'sim' : simData,
-            'exp' : expData}
-    source = ColumnDataSource(data=data)
+#     data = {'cats' : cats,
+#             'targ' : targData,
+#             'sim' : simData,
+#             'exp' : expData}
+#     source = ColumnDataSource(data=data)
 
-    max = np.max((targData,simData,expData))
-    p = figure(x_range=cats, y_range=(0, 1.2*max), plot_width=850, plot_height = 300, 
-               title="Power Comparisons", toolbar_location=None, tools="")
+#     max = np.max((targData,simData,expData))
+#     p = figure(x_range=cats, y_range=(0, 1.2*max), plot_width=850, plot_height = 300, 
+#                title="Power Comparisons", toolbar_location=None, tools="")
 
-    for i in range(len(subCats)):
-        p.vbar(x=dodge('cats', dodges[i], range=p.x_range), top=subCats[i], width=0.2, source=source,
-        color=colors[i], legend_label=subCats[i])
+#     for i in range(len(subCats)):
+#         p.vbar(x=dodge('cats', dodges[i], range=p.x_range), top=subCats[i], width=0.2, source=source,
+#         color=colors[i], legend_label=subCats[i])
 
-    p.x_range.range_padding = 0.1
-    p.xgrid.grid_line_color = None
-    p.legend.location = "top_left"
-    p.legend.orientation = "horizontal"
-    return p
+#     p.x_range.range_padding = 0.1
+#     p.xgrid.grid_line_color = None
+#     p.legend.location = "top_left"
+#     p.legend.orientation = "horizontal"
+#     return p
 
 
 # In[ ]:
 
 
-def MakeInterPowerBarPlot(KTarg, KSim, KExp, labels):
-    cats = labels
-    subCats = ['targ', 'sim', 'exp']
-    dodges =  [ -0.25,   0.0,  0.25]
-    colors = ["#c9d9d3", "#718dbf", "#e84d60"]
+# def MakeInterPowerBarPlot(KTarg, KSim, KExp, labels):
+#     cats = labels
+#     subCats = ['targ', 'sim', 'exp']
+#     dodges =  [ -0.25,   0.0,  0.25]
+#     colors = ["#c9d9d3", "#718dbf", "#e84d60"]
 
     
-    targData = [KTarg.getMeasurement(label)[1] for label in labels]
-    simData = [KSim.getMeasurementAt(label, 1.525)[1] for label in labels]
-    expData = [KExp.getMeasurement(label)[1] for label in labels]
+#     targData = [KTarg.getMeasurement(label)[1] for label in labels]
+#     simData = [KSim.getMeasurementAt(label, 1.525)[1] for label in labels]
+#     expData = [KExp.getMeasurement(label)[1] for label in labels]
     
-    data = {'cats' : cats,
-            'targ' : targData,
-            'sim' : simData,
-            'exp' : expData}
-    source = ColumnDataSource(data=data)
+#     data = {'cats' : cats,
+#             'targ' : targData,
+#             'sim' : simData,
+#             'exp' : expData}
+#     source = ColumnDataSource(data=data)
     
-    max = np.max((targData,simData,expData))
-    p = figure(x_range=cats, y_range=(0, 1.2*max), plot_width=850, plot_height = 300, 
-                title="Power Comparisons", toolbar_location=None, tools="")
+#     max = np.max((targData,simData,expData))
+#     p = figure(x_range=cats, y_range=(0, 1.2*max), plot_width=850, plot_height = 300, 
+#                 title="Power Comparisons", toolbar_location=None, tools="")
 
-    for i in range(len(subCats)):
-        p.vbar(x=dodge('cats', dodges[i], range=p.x_range), top=subCats[i], width=0.2, source=source,
-        color=colors[i], legend_label=subCats[i])
+#     for i in range(len(subCats)):
+#         p.vbar(x=dodge('cats', dodges[i], range=p.x_range), top=subCats[i], width=0.2, source=source,
+#         color=colors[i], legend_label=subCats[i])
 
-    p.x_range.range_padding = 0.1
-    p.xgrid.grid_line_color = None
-    p.legend.location = "top_left"
-    p.legend.orientation = "horizontal"
-    return p
+#     p.x_range.range_padding = 0.1
+#     p.xgrid.grid_line_color = None
+#     p.legend.location = "top_left"
+#     p.legend.orientation = "horizontal"
+#     return p
 
 
 # # Application
@@ -517,7 +517,7 @@ K3Exp1525PDInt = {'T41_T51':110, 'T42_T52':125, 'T43_T53': 70,
 # In[ ]:
 
 
-genInterferenceLabels(6);
+sorted(list(K3Exp1525PDInt.keys())) == sorted(genInterferenceLabels(6))
 
 
 # In[ ]:
@@ -648,7 +648,7 @@ show(p)
 # In[ ]:
 
 
-KExp.applyCorrectionFactor(0.003)
+KExp.applyCorrectionFactor(0.001)
 
 
 # In[ ]:
@@ -678,6 +678,7 @@ K4Exp1525PD = {'T31':  55, 'T32': 107,
 
 
 KTarg = TargSParams('K4')
+KName = 'K4'
 
 
 # In[ ]:
@@ -710,19 +711,7 @@ KExpSpect = ExpResultSpect('K4', n=4, scaleFactor=2.5)
 # In[ ]:
 
 
-
-
-
-# In[ ]:
-
-
-KExp = ExpResult(K4Exp1525PD, n=4, WL=1.525, scaleFactor=2.5)
-
-
-# In[ ]:
-
-
-KName = 'K4'
+#KExp = ExpResult(K4Exp1525PD, n=4, WL=1.525, scaleFactor=2.5)
 
 
 # In[ ]:
@@ -817,9 +806,14 @@ KSim.resetCorrectionFactor()
 # In[ ]:
 
 
-KExp.applyCorrectionFactor(0.2/100.)
-# KExpSpect.importCalibrationCurve("./Simulations/GC_V1.csv")
-# KExpSpect.applyCorrectionFactor(0.5)
+KExpSpect.importGCEffCurve("./Simulations/GC_V1.csv", wlSF=1-0.000, fillValue=100)
+KExpSpect.applyCorrectionFactor(0.55)
+
+
+# In[ ]:
+
+
+KExpSpect.getMeasurement('T31');
 
 
 # In[ ]:
@@ -828,14 +822,30 @@ KExp.applyCorrectionFactor(0.2/100.)
 p = DispersionPlot("Standard Transmission Measurements", "T", [1.4, 1.6], [0, 0.3])
 for name in genTransLabels(4):
     p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
-    p.addPoint(KExp.getMeasurement(name), name)
+    # p.addPoint(KExp.getMeasurement(name), name)
 p.show()
 
 
 # In[ ]:
 
 
-KExpSpect.applyCorrectionFactor(1)
+KSim.resetCorrectionFactor()
+KExpSpect.resetCorrectionFactor()
+
+measurements = genTransLabels(4)
+pbp = PowerBarPlot(cats=measurements, 
+                   subCats=['targ', 'sim', 'exp'], 
+                   title='Standard Transmission Measurements')
+pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
+pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=1.45)
+pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=0.9)
+pbp.build()
+
+
+# In[ ]:
+
+
+KExpSpect.applyCorrectionFactor(0.2)
 p = DispersionPlot("Intra Kernel Interference", "T", [1.4, 1.6], [0, 0.3])
 for name in genInterferenceLabels(4):
     p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
@@ -845,11 +855,44 @@ p.show()
 # In[ ]:
 
 
+KSim.resetCorrectionFactor()
+KExpSpect.resetCorrectionFactor()
+
+measurements = genInterferenceLabels(4)
+pbp = PowerBarPlot(cats=measurements, 
+                   subCats=['targ', 'sim', 'exp'], 
+                   title='Internal Interference Measurements')
+pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
+pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=1.5)
+pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=0.3)
+pbp.build()
+
+
+# In[ ]:
+
+
+KExpSpect.applyCorrectionFactor(0.30)
 p = DispersionPlot("Reference Waveguide Measurements", 'T', [1.4, 1.6], [0, 0.08])
 labels = ('T31_R', 'T42_R')
 for name in labels:
     p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
 p.show()
+
+
+# In[ ]:
+
+
+KSim.resetCorrectionFactor()
+KExpSpect.resetCorrectionFactor()
+
+measurements = ['T31_R', 'T42_R']
+pbp = PowerBarPlot(cats=measurements, 
+                   subCats=['sim', 'exp'], 
+                   title='Internal Interference Measurements')
+#pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
+pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=1.5)
+pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=0.3)
+pbp.build()
 
 
 # In[ ]:

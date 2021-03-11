@@ -190,6 +190,94 @@ dp.addPoint((wlsDec, data3), "Other Data")
 dp.show()
 
 
+# #### MakeBarPlot (Class)
+
+# In[ ]:
+
+
+class PowerBarPlot:
+    
+    def __init__(self, cats, subCats, title):
+        self.cats = cats        # ['T31', 'T41', 'T51', ...]
+        self.subCats = subCats  # ['targ', 'sim', 'exp']
+        self.title = title
+        self.data = {}
+        self.sf = {}
+        
+    def addData(self, subCat, data, sf=1):
+        if subCat not in self.subCats:
+            print("I don't recognize subcat.  Should be one of ", self.subCats)
+        if len(data) != len(self.cats):
+            print("Incorrect length.  Expecting a 1-to-1 correspondance with ", self.cats)
+        self.data[subCat] = [sf*d for d in data]
+        self.sf[subCat] = sf
+        
+    def build(self):
+        self.data['cats'] = self.cats
+        dodges = (np.linspace(-0.5, 0.5, endpoint=True, num=len(self.subCats)+2)[1:-1]).tolist()
+        colors = ["#c9d9d3", "#718dbf", "#e84d60"]
+        colors = colors[:len(self.subCats)]
+        maxV = np.max([self.data[subCat] for subCat in self.subCats])
+        p = figure(x_range=self.cats, y_range=(0, 1.2*maxV), plot_width=850, plot_height = 300, 
+               title=self.title, toolbar_location=None, tools="")
+        source = ColumnDataSource(data=self.data)
+        for i in range(len(self.subCats)):
+            sf = self.sf[self.subCats[i]]
+            if sf == 1:
+                labelSF = ""
+            else:
+                labelSF = " (x "+str(self.sf[self.subCats[i]])+")"
+            p.vbar(x=dodge('cats', dodges[i], range=p.x_range), top=self.subCats[i], width=0.2, source=source,
+                   color=colors[i], legend_label=self.subCats[i]+labelSF)
+        show(p)
+
+
+# In[ ]:
+
+
+pbp = PowerBarPlot(cats=['apples', 'bananas', 'pears', 'oranges'], 
+                   subCats=['raw', 'ripe', 'rotten'], 
+                   title='Fruit Inventory')
+pbp.addData(   'raw', [  0, 80, 30, 30], sf=0.1)
+pbp.addData(  'ripe', [  5,  2,  5,  4])
+pbp.addData('rotten', [  2,  3,  1,  2])
+pbp.build()
+
+
+# In[ ]:
+
+
+def MakePowerBarPlot(KTarg, KSim, KExp, rVals, tVals):
+    cats = ['T'+str(r)+str(t) for r in rVals for t in tVals]
+    subCats = ['targ', 'sim', 'exp']
+    dodges = [-0.25, 0.0, 0.25]
+    colors = ["#c9d9d3", "#718dbf", "#e84d60"]
+
+    targData = KTarg.getPTransPart().flatten().tolist()
+    simData = KSim.getPTransPartAtWL(1.525).flatten().tolist()
+    expData = KExp.getPTransPart().flatten().tolist()
+
+    data = {'cats' : cats,
+            'targ' : targData,
+            'sim' : simData,
+            'exp' : expData}
+    source = ColumnDataSource(data=data)
+
+    max = np.max((targData,simData,expData))
+    p = figure(x_range=cats, y_range=(0, 1.2*max), plot_width=850, plot_height = 300, 
+               title="Power Comparisons", toolbar_location=None, tools="")
+
+    for i in range(len(subCats)):
+        p.vbar(x=dodge('cats', dodges[i], range=p.x_range), top=subCats[i], width=0.2, source=source,
+        color=colors[i], legend_label=subCats[i])
+
+    p.x_range.range_padding = 0.1
+    p.xgrid.grid_line_color = None
+    p.legend.location = "top_left"
+    p.legend.orientation = "horizontal"
+    return p
+
+
 # #### Phase Error Simulation Plot
 
 # In[ ]:
