@@ -144,10 +144,17 @@ class DispersionPlot:
         # p.update_layout(shapes=[dict(type= 'line', yref= 'paper', y0= 0, y1= 1, xref= 'x', x0= 1.525, x1= 1.525)])
         self.p.xaxis.axis_label = 'wavelength (um)'
         self.p.yaxis.axis_label = yLabel
+        self.colorIndex = 0
     
-    def addPairedTraces(self, traceDataGoal, traceDataExp, name):
+    def addPairedTraces(self, traceDataGoal, traceDataExp, name, colorIndex="auto"):
         p = self.p
-        color = palettes.Category10[10][hash(name)%10]
+        if colorIndex == "auto":
+            color = palettes.Category10[10][self.colorIndex%10]
+            self.colorIndex += 1
+        if colorIndex == "hash":
+            color = palettes.Category10[10][hash(name)%10]            
+        elif type(colorIndex) is int:
+            color = palettes.Category10[10][colorIndex%10]
         self.p.line(traceDataGoal[0], traceDataGoal[1], line_color=color, line_width=1, legend_label=name+" goal")
         self.p.line(traceDataExp[0],  traceDataExp[1],  line_color=color, line_width=2, legend_label=name+" exp")
         
@@ -215,7 +222,7 @@ class PowerBarPlot:
     def build(self):
         self.data['cats'] = self.cats
         dodges = (np.linspace(-0.5, 0.5, endpoint=True, num=len(self.subCats)+2)[1:-1]).tolist()
-        colors = ["#c9d9d3", "#718dbf", "#e84d60"]
+        colors = ["#c9d9d3", "#718dbf", "#e84d60", "#408040"]
         colors = colors[:len(self.subCats)]
         maxV = np.max([self.data[subCat] for subCat in self.subCats])
         p = figure(x_range=self.cats, y_range=(0, 1.2*maxV), plot_width=850, plot_height = 300, 
@@ -359,7 +366,7 @@ def MakePowerBarPlot(KTarg, KSim, KExp, rVals, tVals):
     cats = ['T'+str(r)+str(t) for r in rVals for t in tVals]
     subCats = ['targ', 'sim', 'exp']
     dodges = [-0.25, 0.0, 0.25]
-    colors = ["#c9d9d3", "#718dbf", "#e84d60"]
+    colors = ["#c9d9d3", "#718dbf", "#e84d60", "#184d10"]
 
     targData = KTarg.getPTransPart().flatten().tolist()
     simData = KSim.getPTransPartAtWL(1.525).flatten().tolist()

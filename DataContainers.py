@@ -577,13 +577,17 @@ class ExpResultSpect:
     def resetCorrectionFactor(self):
         self.sf = 1
         
-    def importGCEffCurve(self, fname, wlSF=1, fillValue=1):       
+    def importSimGCEffCurve(self, fname, wlSF=1, fillValue=1):       
         calCurve = np.array(pd.read_csv(fname, sep=',', header=None))
         wlsImp, TImp = calCurve.T
         f = sp.interpolate.interp1d(wlSF*wlsImp/1000, TImp, kind='quadratic', fill_value=fillValue, bounds_error=False)
         randomDataValue = list(self.dataDict.values())[0]
         wlsNew, _ = randomDataValue
         self.GCEffCurve = f(wlsNew)
+        
+    def importExpGCEffCurve(self, fName):       
+        wls, T = getExpTrace(fName)
+        self.GCEffCurve = T**(1/2)  
     
     def resetGCEffCurve(self):
         self.GCEffCurve = 1
@@ -609,7 +613,7 @@ K4ExpSp = ExpResultSpect('K4', 4)
 
 
 class ExpResult:
-    def __init__(self, transDict, portCount, WL='1.525', scaleFactor=1):
+    def __init__(self, transDict, portCount, WL=1.525, scaleFactor=1):
         self.wl = WL
         self.dataDict = transDict
         self.sf = scaleFactor
@@ -624,6 +628,17 @@ class ExpResult:
         
     def getMeasurement(self, key):
         return (self.wl, (self.sf)*self.dataDict[key])
+    
+    def getMeasurementAt(self, key, wl, verbose=False):
+        """
+        key is expected to be of the form:
+        """
+        if(wl == self.wl):
+            wl, v = self.getMeasurement(key)
+            return v
+        else:
+            print("Wavelength doesn't match")
+            return 0.
 
     def getTVal(self, r, c):
         return (self.sf)*self.dataDict['T'+str(r)+str(c)]

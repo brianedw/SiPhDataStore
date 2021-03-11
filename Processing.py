@@ -496,7 +496,7 @@ show(p)
 
 
 
-# ## K3 Analysis
+# ## K3 Analysis (Mono)
 
 # In[ ]:
 
@@ -664,6 +664,245 @@ p = MakeInterPowerBarPlot(KTarg, KSim, KExp, labels)
 show(p)
 
 
+# ## K3
+
+# ### Imports
+
+# In[ ]:
+
+
+K3Exp1525PD = {'T41':  55, 'T42': 107, 'T43':  63,
+                'T51': 126, 'T52':  39, 'T53':  59,
+                'T61':  46, 'T62':  49, 'T63': 105}
+
+
+# In[ ]:
+
+
+K3Exp1525PDInt = {'T41_T51':110, 'T42_T52':125, 'T43_T53': 70,
+                  'T51_T61':120, 'T52_T62': 36, 'T53_T63':135,
+                  'T41_T61': 99, 'T42_T62': 75, 'T43_T63':121}
+
+
+# In[ ]:
+
+
+K3ExpMonoDict = {}
+K3ExpMonoDict.update(K3Exp1525PD)
+K3ExpMonoDict.update(K3Exp1525PDInt)
+
+
+# In[ ]:
+
+
+KTarg = TargSParams('K3')
+KName = 'K3'
+
+
+# In[ ]:
+
+
+print(KTarg.getSTransPart())
+
+
+# In[ ]:
+
+
+p = PolarPlot(KName)
+p.addMatrix(KTarg.getSTransPart())
+p.show()
+
+
+# In[ ]:
+
+
+KSim2D = SimSParams('Simulations//K3_2DEIA_SIM3.txt')
+KSim = SimSParams("Simulations/K3_SIM4.txt", "Simulations/Cal3_Sim4.txt")
+
+
+# In[ ]:
+
+
+KExp = ExpResult(K3ExpMonoDict, portCount=6)
+
+
+# In[ ]:
+
+
+KExpSpect = ExpResultSpect('K3', n=6, scaleFactor=1)
+KExpSpect.importExpGCEffCurve('Experiments\\Calibration\\GC_GC__n12dBm_46d7K.csv')
+
+
+# In[ ]:
+
+
+#KExp = ExpResult(K4Exp1525PD, n=4, WL=1.525, scaleFactor=2.5)
+
+
+# In[ ]:
+
+
+KSim2D.getSTransPart(1.525);
+
+
+# In[ ]:
+
+
+KTarg.getSTransPart();
+
+
+# ### Matching Sim2D with Target
+
+# In[ ]:
+
+
+KSim2D.resetCorrectionFactor()
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim2D.getSTransPart(1.525))
+p.show()
+
+
+# In[ ]:
+
+
+CF = findSingleRotCF(KSim2D.getSTransPart(1.525), KTarg.getSTransPart())
+
+
+# In[ ]:
+
+
+KSim2D.applyCorrectionFactor(CF)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim2D.getSTransPart(1.525))
+p.show()
+KSim2D.resetCorrectionFactor()
+
+
+# In[ ]:
+
+
+
+CF = findDoubleRotCF(KSim2D.getSTransPart(1.525), KTarg.getSTransPart())
+
+
+# In[ ]:
+
+
+KSim2D.applyCorrectionFactor(CF)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim2D.getSTransPart(1.525))
+p.show()
+KSim.resetCorrectionFactor()
+
+
+# ### Matching Sim3D with Target
+
+# In[ ]:
+
+
+KSim.resetCorrectionFactor()
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim.getSTransPart(1.525))
+p.show()
+
+
+# In[ ]:
+
+
+CFSR = findSingleRotCF(KSim.getSTransPart(1.525), KTarg.getSTransPart())
+
+
+# In[ ]:
+
+
+KSim.applyCorrectionFactor(CFSR)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim.getSTransPart(1.525))
+p.show()
+KSim.resetCorrectionFactor()
+
+
+# In[ ]:
+
+
+CFDR = findDoubleRotCF(KSim.getSTransPart(1.525), KTarg.getSTransPart())
+
+
+# In[ ]:
+
+
+KSim.applyCorrectionFactor(CFDR)
+p = PolarPlot(KName)
+p.addMatrixDiff(KTarg.getSTransPart(), KSim.getSTransPart(1.525))
+p.show()
+KSim.resetCorrectionFactor()
+
+
+# ### Spectroscopic Results
+
+# In[ ]:
+
+
+KExpSpect.applyCorrectionFactor(1.8)
+p = DispersionPlot("Standard Transmission Measurements", "T", [1.4, 1.6], [0, 0.5])
+for name in genTransLabels(6):
+    p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
+    # p.addPoint(KExp.getMeasurement(name), name)
+p.show()
+KExpSpect.resetCorrectionFactor()
+
+
+# In[ ]:
+
+
+KExp.getMeasurementAt('T51', 1.525)
+
+
+# In[ ]:
+
+
+KSim.resetCorrectionFactor()
+KExpSpect.resetCorrectionFactor()
+
+measurements = genTransLabels(6)
+pbp = PowerBarPlot(cats=measurements, 
+                   subCats=['targ', 'sim', 'exp', 'expMono'], 
+                   title='Standard Transmission Measurements')
+pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
+pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
+pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
+pbp.addData( 'expMono', [KExp.getMeasurementAt(m, 1.525) for m in measurements], sf=0.0045)
+pbp.build()
+
+
+# In[ ]:
+
+
+KExpSpect.applyCorrectionFactor(0.8)
+p = DispersionPlot("Intra Kernel Interference", "T", [1.4, 1.6], [0, 0.3])
+for name in genInterferenceLabels(6):
+    p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
+p.show()
+KExpSpect.resetCorrectionFactor()
+
+
+# In[ ]:
+
+
+KSim.resetCorrectionFactor()
+KExpSpect.resetCorrectionFactor()
+
+measurements = genInterferenceLabels(6)
+pbp = PowerBarPlot(cats=measurements, 
+                   subCats=['targ', 'sim', 'exp', 'expMono'], 
+                   title='Internal Interference Measurements')
+pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
+pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
+pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
+pbp.addData( 'expMono', [KExp.getMeasurementAt(m, 1.525) for m in measurements], sf=0.002)
+pbp.build()
+
+
 # ## K4
 
 # In[ ]:
@@ -672,6 +911,12 @@ show(p)
 K4Exp1525PD = {'T31':  55, 'T32': 107, 
                'T41': 126, 'T42':  39,
               'T31_T41':110, 'T32_T42':125}
+
+
+# In[ ]:
+
+
+KExp = ExpResult(K4Exp1525PD, portCount=4)
 
 
 # In[ ]:
@@ -705,25 +950,8 @@ KSim = SimSParams("Simulations/K4_SIM4.txt", "Simulations/Cal4_Sim4.txt")
 # In[ ]:
 
 
-KExpSpect = ExpResultSpect('K4', n=4, scaleFactor=2.5)
-
-
-# In[ ]:
-
-
-#KExp = ExpResult(K4Exp1525PD, n=4, WL=1.525, scaleFactor=2.5)
-
-
-# In[ ]:
-
-
-KSim2D.getSTransPart(1.525)
-
-
-# In[ ]:
-
-
-KTarg.getSTransPart()
+KExpSpect = ExpResultSpect('K4', n=4, scaleFactor=1)
+KExpSpect.importExpGCEffCurve('Experiments\\Calibration\\GC_GC__n12dBm_46d7K.csv')
 
 
 # In[ ]:
@@ -806,20 +1034,8 @@ KSim.resetCorrectionFactor()
 # In[ ]:
 
 
-KExpSpect.importGCEffCurve("./Simulations/GC_V1.csv", wlSF=1-0.000, fillValue=100)
-KExpSpect.applyCorrectionFactor(0.55)
-
-
-# In[ ]:
-
-
-KExpSpect.getMeasurement('T31');
-
-
-# In[ ]:
-
-
-p = DispersionPlot("Standard Transmission Measurements", "T", [1.4, 1.6], [0, 0.3])
+KExpSpect.applyCorrectionFactor(1)
+p = DispersionPlot("Standard Transmission Measurements", "T", [1.4, 1.6], [0, 0.5])
 for name in genTransLabels(4):
     p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
     # p.addPoint(KExp.getMeasurement(name), name)
@@ -834,18 +1050,19 @@ KExpSpect.resetCorrectionFactor()
 
 measurements = genTransLabels(4)
 pbp = PowerBarPlot(cats=measurements, 
-                   subCats=['targ', 'sim', 'exp'], 
+                   subCats=['targ', 'sim', 'exp', 'expMono'], 
                    title='Standard Transmission Measurements')
 pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
 pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=1.45)
-pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=0.9)
+pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=1.70)
+pbp.addData( 'expMono', [KExp.getMeasurementAt(m, 1.525) for m in measurements], sf=0.0033)
 pbp.build()
 
 
 # In[ ]:
 
 
-KExpSpect.applyCorrectionFactor(0.2)
+KExpSpect.applyCorrectionFactor(0.4)
 p = DispersionPlot("Intra Kernel Interference", "T", [1.4, 1.6], [0, 0.3])
 for name in genInterferenceLabels(4):
     p.addPairedTraces(KSim.getMeasurement(name), KExpSpect.getMeasurement(name), name)
@@ -855,16 +1072,14 @@ p.show()
 # In[ ]:
 
 
-KSim.resetCorrectionFactor()
-KExpSpect.resetCorrectionFactor()
-
 measurements = genInterferenceLabels(4)
 pbp = PowerBarPlot(cats=measurements, 
-                   subCats=['targ', 'sim', 'exp'], 
+                   subCats=['targ', 'sim', 'exp', 'expMono'], 
                    title='Internal Interference Measurements')
 pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
-pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=1.5)
-pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=0.3)
+pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=1.45)
+pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=1.45)
+pbp.addData( 'expMono', [KExp.getMeasurementAt(m, 1.525) for m in measurements], sf=0.0013)
 pbp.build()
 
 
