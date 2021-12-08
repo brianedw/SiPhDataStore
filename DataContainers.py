@@ -613,9 +613,14 @@ K4ExpSp = ExpResultSpect('K4', 4)
 
 
 class ExpResult:
-    def __init__(self, transDict, portCount, WL=1.525, scaleFactor=1):
+    def __init__(self, transDict, portCount, units='mV', WL=1.525, R_TIA=46700, gc_power_dBm=-15.5, scaleFactor=1):
         self.wl = WL
-        self.dataDict = transDict
+        if units == 'mV':
+            importScaleFactor = 0.001
+        elif units == 'V':
+            importScaleFactor = 1        
+        self.dataDict = {k:v*importScaleFactor for k,v in transDict.items()}
+        self.detailsDict = {'R_TIA': R_TIA, 'gc_power_mW': 10**(gc_power_dBm/10)}
         self.sf = scaleFactor
         n = int(np.sqrt(len(transDict)))
         self.portCount = portCount
@@ -627,7 +632,15 @@ class ExpResult:
                                [transArray, zArray]])
         
     def getMeasurement(self, key):
-        return (self.wl, (self.sf)*self.dataDict[key])
+        value = self.dataDict[key]
+        PDResp =  0.8/1000  # [A/mW]
+        R_TIA = self.detailsDict['R_TIA']  # Ohms
+        P_GC = self.detailsDict['gc_power_mW']  # mW
+        GCEffCurve = self.GCEffCurve
+        PIn = P_GC*GCEffCurve  # mW
+        POut = value/(R_TIA*PDResp)  # mW
+        T = self.sf*(POut/PIn)        
+        return (self.wl, T)
     
     def getMeasurementAt(self, key, wl, verbose=False):
         """
@@ -639,6 +652,15 @@ class ExpResult:
         else:
             print("Wavelength doesn't match")
             return 0.
+        
+    def importExpGCEffCurve(self, fName):       
+        wls, T = getExpTrace(fName)
+        f = sp.interpolate.interp1d(wls, T, kind='quadratic', fill_value=0, bounds_error=False)
+        Tint = f(self.wl)
+        self.GCEffCurve = Tint**(1/2)  
+    
+    def resetGCEffCurve(self):
+        self.GCEffCurve = 1        
 
     def getTVal(self, r, c):
         return (self.sf)*self.dataDict['T'+str(r)+str(c)]

@@ -91,8 +91,6 @@ from UtilityPlotting import (PolarPlot, DispersionPlot, PowerBarPlot)
 
 # # Work
 
-# ## Theoretical Kernel Definitions
-
 # ## Function Library
 
 # ### Plotting
@@ -687,6 +685,22 @@ K3Exp1525PDInt = {'T41_T51':110, 'T42_T52':125, 'T43_T53': 70,
 # In[ ]:
 
 
+K3Exp1525PD = {'T41':  91, 'T42':  47, 'T43':  19,
+               'T51': 158, 'T52':  92, 'T53':  42,
+               'T61': 148, 'T62':  85, 'T63':  57}
+
+
+# In[ ]:
+
+
+K3Exp1525PDInt = {'T41_T51':127, 'T42_T52': 77, 'T43_T53': 36,
+                  'T51_T61':203, 'T52_T62':106, 'T53_T63': 64,
+                  'T41_T61':145, 'T42_T62': 83, 'T43_T63': 32}
+
+
+# In[ ]:
+
+
 K3ExpMonoDict = {}
 K3ExpMonoDict.update(K3Exp1525PD)
 K3ExpMonoDict.update(K3Exp1525PDInt)
@@ -723,7 +737,51 @@ KSim = SimSParams("Simulations/K3_SIM4.txt", "Simulations/Cal3_Sim4.txt")
 # In[ ]:
 
 
-KExp = ExpResult(K3ExpMonoDict, portCount=6)
+KExp = ExpResult(K3ExpMonoDict, portCount=6, units='mV', WL=1.525, R_TIA=46700, gc_power_dBm=-14.7)
+KExp.importExpGCEffCurve('Experiments\\Calibration\\GC_GC__n12dBm_46d7K.csv')
+
+
+# In[ ]:
+
+
+KExp.GCEffCurve
+
+
+# In[ ]:
+
+
+KExp.detailsDict
+
+
+# In[ ]:
+
+
+value = KExp.dataDict['T51']
+PDResp =  0.8/1000  # [A/mW]
+R_TIA = KExp.detailsDict['R_TIA']  # Ohms
+P_GC = KExp.detailsDict['gc_power_mW']  # mW
+GCEffCurve = KExp.GCEffCurve
+PIn = P_GC*GCEffCurve  # mW
+POut = value/(R_TIA*PDResp)  # mW
+T = KExp.sf*(POut/PIn)
+
+
+# In[ ]:
+
+
+value
+
+
+# In[ ]:
+
+
+KExp.getMeasurement('T51')
+
+
+# In[ ]:
+
+
+KExp.getMeasurementAt('T51', 1.525)
 
 
 # In[ ]:
@@ -866,12 +924,13 @@ KExpSpect.resetCorrectionFactor()
 
 measurements = genTransLabels(6)
 pbp = PowerBarPlot(cats=measurements, 
-                   subCats=['targ', 'sim', 'exp', 'expMono'], 
+                   #subCats=['targ', 'sim', 'exp', 'expMono'], 
+                   subCats=['targ', 'sim', 'expMono'], 
                    title='Standard Transmission Measurements')
 pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
 pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
-pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
-pbp.addData( 'expMono', [KExp.getMeasurementAt(m, 1.525) for m in measurements], sf=0.0045)
+# pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
+pbp.addData( 'expMono', [KExp.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
 pbp.build()
 
 
@@ -894,12 +953,13 @@ KExpSpect.resetCorrectionFactor()
 
 measurements = genInterferenceLabels(6)
 pbp = PowerBarPlot(cats=measurements, 
-                   subCats=['targ', 'sim', 'exp', 'expMono'], 
+                   #subCats=['targ', 'sim', 'exp', 'expMono'], 
+                   subCats=['targ', 'sim', 'expMono'],                    
                    title='Internal Interference Measurements')
 pbp.addData('targ', [KTarg.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
 pbp.addData( 'sim', [KSim.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
-pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
-pbp.addData( 'expMono', [KExp.getMeasurementAt(m, 1.525) for m in measurements], sf=0.002)
+# pbp.addData( 'exp', [KExpSpect.getMeasurementAt(m, 1.525) for m in measurements], sf=2)
+pbp.addData( 'expMono', [KExp.getMeasurementAt(m, 1.525) for m in measurements], sf=1)
 pbp.build()
 
 
